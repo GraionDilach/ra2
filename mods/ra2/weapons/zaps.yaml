@@ -230,3 +230,41 @@ CRNeutronRifle:
 	Range: 6c0
 	Warhead@Disable: GrantExternalCondition
 		Duration: 350
+
+LightningStorm:
+	ReloadDelay: 0
+	Range: 7c0
+	Projectile: InstantHit
+		Blockable: false
+	Warhead@1Eff: CreateEffect
+		Delay: 0
+		Explosions: weathercloud1, weathercloud2, weathercloud3
+		UsePlayerPalette: true
+		ExplosionPalette: player
+		ValidTargets: Ground, Water
+		ImpactActors: false
+	Warhead@2Dam: SpreadDamage
+		Delay: 50
+		Spread: 3c0
+		Damage: 165
+		Versus:
+			None: 0
+			Flak: 0
+			Plate: 0
+			Light: 0
+			Medium: 0
+			Heavy: 0
+			Wood: 100
+			Steel: 100
+			Concrete: 6
+			Drone: 0
+			Rocket: 0
+		DamageTypes: Prone100Percent
+	Warhead@3Eff: CreateEffect
+		Delay: 50
+		Explosions: weatherbolt1, weatherbolt2, weatherbolt3
+		ValidTargets: Ground, Water
+		ImpactSounds: sweastra.wav, sweastrb.wav, sweastrc.wav, sweastrd.wav
+	Warhead@4Smu: LeaveSmudge
+		Delay: 50
+		SmudgeType: LargeScorch
