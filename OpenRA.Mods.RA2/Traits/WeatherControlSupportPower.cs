@@ -58,14 +58,21 @@ namespace OpenRA.Mods.RA2.Traits.SupportPowers
 		}
 	}
 
-	public class WeatherControlSupportPower : SupportPower
+	public class WeatherControlSupportPower : SupportPower, ITick
 	{
 		readonly WeatherControlSupportPowerInfo info;
+
+		int weaponDelay;
+		int weaponCount;
+		bool launched;
+		WPos targetPos;
 
 		public WeatherControlSupportPower(Actor self, WeatherControlSupportPowerInfo info)
 			: base(self, info)
 		{
 			this.info = info;
+			weaponCount = info.WeaponDelay;
+			weaponCount = info.WeaponCount;
 		}
 
 		WVec RandomOffset(World world)
@@ -79,11 +86,13 @@ namespace OpenRA.Mods.RA2.Traits.SupportPowers
 		{
 			base.Activate(self, order, manager);
 
-			WPos targetPos = order.Target.CenterPosition;
+			targetPos = order.Target.CenterPosition;
 
 			self.World.AddFrameEndTask(w =>
 			{
 				PlayLaunchSounds();
+
+				launched = true;
 
 				if (!string.IsNullOrEmpty(info.PaletteEffectType))
 				{
@@ -91,19 +100,32 @@ namespace OpenRA.Mods.RA2.Traits.SupportPowers
 					foreach (var paletteEffect in paletteEffects)
 						paletteEffect.Enable(-1);
 				}
-
-				for (int i = 0; i < info.WeaponCount; i++)
-				{
-					var offset = RandomOffset(w);
-					var newPos = targetPos + offset;
-					var target = Target.FromPos(newPos);
-
-					if (info.WeaponInfo.Report != null && info.WeaponInfo.Report.Any())
-						Game.Sound.Play(SoundType.World, info.WeaponInfo.Report.Random(w.LocalRandom), targetPos);
-
-					info.WeaponInfo.Impact(target, self, Enumerable.Empty<int>());
-				}
 			});
+		}
+
+		void ITick.Tick(Actor self)
+		{
+			if (!launched)
+				return;
+
+			if (weaponDelay-- > 0)
+				return;
+
+			weaponDelay = info.WeaponDelay;
+
+			if (weaponCount < 1)
+				return;
+
+			var offset = RandomOffset(self.World);
+			var newPos = targetPos + offset;
+			var target = Target.FromPos(newPos);
+
+			if (info.WeaponInfo.Report != null && info.WeaponInfo.Report.Any())
+				Game.Sound.Play(SoundType.World, info.WeaponInfo.Report.Random(self.World.LocalRandom), targetPos);
+
+			info.WeaponInfo.Impact(target, self, Enumerable.Empty<int>());
+
+			weaponCount--;
 		}
 	}
 }
