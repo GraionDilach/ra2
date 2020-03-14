@@ -26,17 +26,23 @@ namespace OpenRA.Mods.RA2.Traits.SupportPowers
 		[Desc("Corresponds to `Type` from `WeatherEffectPaletteEffect` on the world actor.")]
 		public readonly string PaletteEffectType = null;
 
-		[Desc("Time in ticks before the weapon impacts.")]
-		public readonly int WeaponDelay = 50;
+		[Desc("Active duration during the time clouds can spawn.")]
+		public readonly int Duration = 180;
 
-		[Desc("How many clouds to spawn.")]
-		public readonly int WeaponCount = 10;
+		[Desc("Delay between direct hits.")]
+		public readonly int HitDelay = 10;
+
+		[Desc("Delay between random cloud spawning.")]
+		public readonly int ScatterDelay = 5;
+
+		[Desc("Amount of random clouds spawned.")]
+		public readonly int ScatterCount = 1;
 
 		[Desc("Spawn offset interval for the clouds relative to the target in X direction.")]
-		public int2 OffsetsX = new int2(-5400, 0);
+		public int2 OffsetsX = new int2(-5120, 5120);
 
 		[Desc("Spawn offset interval for the clouds relative to the target in Y direction.")]
-		public int2 OffsetsY = new int2(0, 4800);
+		public int2 OffsetsY = new int2(-5120, 5120);
 
 		public override object Create(ActorInitializer init)
 		{
@@ -62,8 +68,9 @@ namespace OpenRA.Mods.RA2.Traits.SupportPowers
 	{
 		readonly WeatherControlSupportPowerInfo info;
 
-		int weaponDelay;
-		int weaponCount;
+		int hitDelay;
+		int scatterDelay;
+		int duration;
 		bool launched;
 		WPos targetPos;
 
@@ -71,8 +78,8 @@ namespace OpenRA.Mods.RA2.Traits.SupportPowers
 			: base(self, info)
 		{
 			this.info = info;
-			weaponCount = info.WeaponDelay;
-			weaponCount = info.WeaponCount;
+			hitDelay = info.HitDelay;
+			scatterDelay = info.ScatterDelay;
 		}
 
 		WVec RandomOffset(World world)
@@ -93,6 +100,7 @@ namespace OpenRA.Mods.RA2.Traits.SupportPowers
 				PlayLaunchSounds();
 
 				launched = true;
+				duration = info.Duration;
 
 				if (!string.IsNullOrEmpty(info.PaletteEffectType))
 				{
@@ -108,24 +116,32 @@ namespace OpenRA.Mods.RA2.Traits.SupportPowers
 			if (!launched)
 				return;
 
-			if (weaponDelay-- > 0)
-				return;
+			if (--duration < 0)
+				launched = false;
 
-			weaponDelay = info.WeaponDelay;
+			if (--hitDelay < 0)
+			{
+				hitDelay = info.HitDelay;
 
-			if (weaponCount < 1)
-				return;
+				info.WeaponInfo.Impact(Target.FromPos(targetPos), self, Enumerable.Empty<int>());
+			}
 
-			var offset = RandomOffset(self.World);
-			var newPos = targetPos + offset;
-			var target = Target.FromPos(newPos);
+			if (--scatterDelay < 0)
+			{
+				scatterDelay = info.ScatterDelay;
+
+				for (int i = 0; i < info.ScatterCount; i++)
+				{
+					var offset = RandomOffset(self.World);
+					var newPos = targetPos + offset;
+					var scatterTarget = Target.FromPos(newPos);
+
+					info.WeaponInfo.Impact(scatterTarget, self, Enumerable.Empty<int>());
+				}
+			}
 
 			if (info.WeaponInfo.Report != null && info.WeaponInfo.Report.Any())
 				Game.Sound.Play(SoundType.World, info.WeaponInfo.Report.Random(self.World.LocalRandom), targetPos);
-
-			info.WeaponInfo.Impact(target, self, Enumerable.Empty<int>());
-
-			weaponCount--;
 		}
 	}
 }
